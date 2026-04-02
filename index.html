@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>燙金膜成本查詢系統</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+    background: #f0f2f5;
+    color: #333;
+    min-height: 100vh;
+  }
+  .header {
+    background: linear-gradient(135deg, #1a73e8, #0d47a1);
+    color: #fff;
+    padding: 20px 16px 16px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  .header h1 { font-size: 20px; font-weight: 600; letter-spacing: 1px; }
+  .header .subtitle { font-size: 12px; opacity: .8; margin-top: 4px; }
+  .container { padding: 16px; max-width: 480px; margin: 0 auto; }
+
+  .section-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .section-card h2 {
+    font-size: 15px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-card h2.blue { color: #1a73e8; }
+  .section-card h2.orange { color: #e67e22; }
+  .section-card h2.purple { color: #7b1fa2; }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  .field .hint {
+    font-size: 11px;
+    color: #999;
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .field select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 16px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    color: #333;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .field select:focus { outline: none; border-color: #1a73e8; background-color: #fff; }
+  .field select:disabled { background: #f0f0f0; color: #aaa; cursor: not-allowed; }
+
+  /* Step indicator */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    margin-bottom: 14px;
+  }
+  .step {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    background: #e0e0e0; color: #999;
+    transition: all .3s;
+  }
+  .step.active { background: #1a73e8; color: #fff; }
+  .step.done { background: #4caf50; color: #fff; }
+  .step-line { width: 16px; height: 2px; background: #e0e0e0; transition: background .3s; }
+  .step-line.done { background: #4caf50; }
+
+  /* Button grid */
+  .btn-grid { display: grid; gap: 10px; }
+  .btn-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .btn-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .pick-btn {
+    position: relative;
+    padding: 12px 8px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    background: #fafafa;
+    cursor: pointer;
+    text-align: center;
+    transition: all .2s;
+  }
+  .pick-btn:active { transform: scale(0.97); }
+  .pick-btn .btn-label { font-size: 15px; font-weight: 700; color: #333; }
+  .pick-btn .btn-sub { font-size: 12px; color: #888; margin-top: 3px; }
+  .pick-btn .check-mark {
+    position: absolute; top: 4px; right: 6px;
+    font-size: 14px; display: none;
+  }
+  .pick-btn.selected .check-mark { display: block; }
+  .pick-btn.ship-btn.selected {
+    border-color: #e67e22; background: #fff8f0;
+    box-shadow: 0 0 0 1px #e67e22;
+  }
+  .pick-btn.ship-btn.selected .btn-label { color: #e67e22; }
+  .pick-btn.ship-btn.selected .btn-sub { color: #e67e22; }
+  .pick-btn.disabled {
+    opacity: 0.35; cursor: not-allowed; pointer-events: none;
+  }
+
+  /* Result */
+  .result-section {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    animation: fadeIn .3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .result-title {
+    padding: 12px 16px; font-size: 14px; font-weight: 600;
+    color: #fff; display: flex; align-items: center; gap: 6px;
+  }
+  .result-title.tax { background: #1a73e8; }
+  .result-title.notax { background: #e67e22; }
+  .result-body { padding: 16px; }
+  .product-info {
+    margin-bottom: 12px; padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .product-info .model-name { font-size: 17px; font-weight: 700; color: #333; }
+  .product-info .desc { font-size: 13px; color: #777; margin-top: 2px; }
+  .price-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #f5f5f5;
+  }
+  .price-row:last-child { border-bottom: none; }
+  .price-row .label { font-size: 13px; color: #666; }
+  .price-row .value { font-size: 15px; font-weight: 600; color: #333; }
+  .price-row.total .label { font-size: 14px; font-weight: 600; color: #333; }
+  .price-row.total .value { font-size: 22px; font-weight: 700; color: #e65100; }
+  .price-row.shipping .value { color: #e67e22; font-weight: 600; }
+  .note-badge {
+    display: inline-block; background: #e3f2fd; color: #1565c0;
+    font-size: 12px; padding: 3px 8px; border-radius: 4px; margin-top: 8px;
+  }
+  .no-result {
+    text-align: center; padding: 40px 16px; color: #bbb; font-size: 14px;
+  }
+  .no-result .icon { font-size: 40px; margin-bottom: 8px; }
+  .reset-btn {
+    display: block; width: 100%; padding: 12px;
+    background: #f5f5f5; border: 1.5px solid #ddd; border-radius: 8px;
+    font-size: 14px; color: #666; cursor: pointer; margin-bottom: 24px;
+    transition: background .2s;
+  }
+  .reset-btn:active { background: #e8e8e8; }
+  .tag {
+    display: inline-block; font-size: 11px; padding: 2px 6px;
+    border-radius: 4px; font-weight: 600;
+  }
+  .tag.tax { background: #e3f2fd; color: #1565c0; }
+  .tag.notax { background: #fff3e0; color: #e65100; }
+
+  #resultArea { display: none; }
+  #resultArea.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>燙金膜成本查詢系統</h1>
+  <div class="subtitle">供應商 → 型號 → 描述 → 顏色 → 運費</div>
+</div>
+
+<div class="container">
+
+  <!-- 篩選區 -->
+  <div class="section-card">
+    <h2 class="blue">🔍 產品篩選</h2>
+    <div class="step-indicator">
+      <div class="step" id="s1">1</div><div class="step-line" id="sl1"></div>
+      <div class="step" id="s2">2</div><div class="step-line" id="sl2"></div>
+      <div class="step" id="s3">3</div><div class="step-line" id="sl3"></div>
+      <div class="step" id="s4">4</div>
+    </div>
+    <div class="field">
+      <label>① 供應商</label>
+      <select id="vendorFilter"><option value="">— 請選擇供應商 —</option></select>
+    </div>
+    <div class="field">
+      <label>② 產品型號</label>
+      <select id="modelFilter" disabled><option value="">— 請先選擇供應商 —</option></select>
+    </div>
+    <div class="field">
+      <label>③ 產品描述</label>
+      <select id="descFilter" disabled><option value="">— 請先選擇型號 —</option></select>
+    </div>
+  </div>
+
+  <!-- 顏色分類 -->
+  <div class="section-card">
+    <h2 class="purple">🎨 顏色分類</h2>
+    <div class="field">
+      <label>④ 顏色分類</label>
+      <select id="colorFilter" disabled><option value="">— 請先選擇描述 —</option></select>
+    </div>
+  </div>
+
+  <!-- 運送方式 -->
+  <div class="section-card">
+    <h2 class="orange">🚢 運送方式</h2>
+    <div class="btn-grid cols-2" id="shippingGrid"></div>
+  </div>
+
+  <!-- 結果（只有全部選完才顯示） -->
+  <div id="resultArea"></div>
+
+  <button class="reset-btn" onclick="resetAll()">↻ 清除所有篩選</button>
+</div>
+
+<script>
+// ===== 產品資料 =====
+// 由「更新網頁.py」自動產生，請勿手動修改
+const PRODUCTS = [
+  {
+    model: "TJ/TE",
+    desc: "12u-金銀色",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 52,
+    unitPriceNoTax: 46.8,
+    baseTWD: 217,
+    note: "金色 主力型號"
+  },
+  {
+    model: "TJ/TE",
+    desc: "12u-雜色",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 63,
+    unitPriceNoTax: 56.7,
+    baseTWD: 263,
+    note: "紅色"
+  },
+  {
+    model: "TK",
+    desc: "12u-雜色",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 74,
+    unitPriceNoTax: 66.6,
+    baseTWD: 309,
+    note: "紅色"
+  },
+  {
+    model: "30",
+    desc: "12u-金銀色",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 81,
+    unitPriceNoTax: 72.9,
+    baseTWD: 338,
+    note: "金色 主力型號"
+  },
+  {
+    model: "30",
+    desc: "12u-雜色",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 91,
+    unitPriceNoTax: 81.9,
+    baseTWD: 380,
+    note: "紅色"
+  },
+  {
+    model: "30",
+    desc: "12u-N配方 霧膜",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 121,
+    unitPriceNoTax: 108.9,
+    baseTWD: 505,
+    note: "紅色"
+  },
+  {
+    model: "30",
+    desc: "12u-素面雷射專案價格",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 110,
+    unitPriceNoTax: 99.0,
+    baseTWD: 459,
+    note: "金色 主力型號"
+  },
+  {
+    model: "30",
+    desc: "12u-雷射金銀",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 118,
+    unitPriceNoTax: 106.2,
+    baseTWD: 492,
+    note: "金色 主力型號"
+  },
+  {
+    model: "30",
+    desc: "15u-雷射金銀",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 143,
+    unitPriceNoTax: 128.7,
+    baseTWD: 597,
+    note: "金色 主力型號"
+  },
+  {
+    model: "98",
+    desc: "12u-金銀色",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 113,
+    unitPriceNoTax: 101.7,
+    baseTWD: 471,
+    note: "紅色"
+  },
+  {
+    model: "98",
+    desc: "12u-385專案",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 108,
+    unitPriceNoTax: 97.2,
+    baseTWD: 451,
+    note: "紅色"
+  },
+  {
+    model: "98",
+    desc: "12u-雜色",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 123,
+    unitPriceNoTax: 110.7,
+    baseTWD: 513,
+    note: "金色 主力型號"
+  },
+  {
+    model: "98",
+    desc: "12u-雷射金銀",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 143,
+    unitPriceNoTax: 128.7,
+    baseTWD: 597,
+    note: "金色 主力型號"
+  },
+  {
+    model: "98",
+    desc: "12u-雜色雷射",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 160,
+    unitPriceNoTax: 144.0,
+    baseTWD: 668,
+    note: "金色 主力型號"
+  },
+  {
+    model: "98",
+    desc: "15u-透明雷射",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 188,
+    unitPriceNoTax: 169.2,
+    baseTWD: 784,
+    note: "紅色"
+  },
+  {
+    model: "6152",
+    desc: "12u-金銀色",
+    vendorCode: "S002",
+    vendorName: "台灣真空",
+    currency: "TWD",
+    priceType: "含稅",
+    unitPrice: 8,
+    unitPriceNoTax: null,
+    baseTWD: 1200,
+    note: "銀色"
+  },
+  {
+    model: "6152",
+    desc: "12u-雜色",
+    vendorCode: "S002",
+    vendorName: "台灣真空",
+    currency: "TWD",
+    priceType: "含稅",
+    unitPrice: 8,
+    unitPriceNoTax: null,
+    baseTWD: 1600,
+    note: "銀色"
+  },
+  {
+    model: "6152",
+    desc: "16u-金銀色",
+    vendorCode: "S002",
+    vendorName: "台灣真空",
+    currency: "TWD",
+    priceType: "含稅",
+    unitPrice: 8,
+    unitPriceNoTax: null,
+    baseTWD: 1200,
+    note: "銀色"
+  },
+  {
+    model: "6152",
+    desc: "16u-雜色",
+    vendorCode: "S002",
+    vendorName: "台灣真空",
+    currency: "TWD",
+    priceType: "含稅",
+    unitPrice: 8,
+    unitPriceNoTax: null,
+    baseTWD: 8,
+    note: "銀色"
+  },
+  {
+    model: "6182",
+    desc: "12u-金銀色",
+    vendorCode: "S002",
+    vendorName: "台灣真空",
+    currency: "TWD",
+    priceType: "含稅",
+    unitPrice: 8,
+    unitPriceNoTax: null,
+    baseTWD: 8,
+    note: "銀色"
+  },
+  {
+    model: "6182",
+    desc: "12u-雜色",
+    vendorCode: "S002",
+    vendorName: "台灣真空",
+    currency: "TWD",
+    priceType: "含稅",
+    unitPrice: 8,
+    unitPriceNoTax: null,
+    baseTWD: 8,
+    note: "銀色"
+  },
+  {
+    model: "6182",
+    desc: "16u-金銀色",
+    vendorCode: "S002",
+    vendorName: "台灣真空",
+    currency: "TWD",
+    priceType: "含稅",
+    unitPrice: 8,
+    unitPriceNoTax: null,
+    baseTWD: 8,
+    note: "銀色"
+  },
+  {
+    model: "6182",
+    desc: "16u-雜色",
+    vendorCode: "S002",
+    vendorName: "台灣真空",
+    currency: "TWD",
+    priceType: "含稅",
+    unitPrice: 8,
+    unitPriceNoTax: null,
+    baseTWD: 8,
+    note: "銀色"
+  },
+  {
+    model: "HF-003",
+    desc: "燙金膜 特殊色 客製",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "含稅",
+    unitPrice: 180,
+    unitPriceNoTax: 162.0,
+    baseTWD: 751,
+    note: "需提前下單"
+  },
+  {
+    model: "HF-004",
+    desc: "燙金膜 150mm×120M",
+    vendorCode: "S001",
+    vendorName: "耀志",
+    currency: "CNY",
+    priceType: "未含稅",
+    unitPrice: 95,
+    unitPriceNoTax: null,
+    baseTWD: 440,
+    note: "雷射膜 未含稅進貨"
+  }
+];
+
+const SHIPPING_RATES = {"報關": 15.0, "海運": 30.0, "快海": 60.0, "空運": 250.0};
+
+// ===== 固定選項 =====
+const COLOR_OPTIONS = ["金銀色", "雜色", "雷射", "透明雷射", "其他"];
+const SHIP_OPTIONS = [
+  { name: "快海", icon: "⚡" },
+  { name: "海運", icon: "🚢" },
+  { name: "報關", icon: "📋" },
+  { name: "空運", icon: "✈️" }
+];
+
+// ===== State =====
+let selectedColor = "";
+let selectedShipping = "";
+let selectedShippingCost = 0;
+
+// ===== DOM =====
+const vendorFilter = document.getElementById('vendorFilter');
+const modelFilter = document.getElementById('modelFilter');
+const descFilter = document.getElementById('descFilter');
+const colorFilter = document.getElementById('colorFilter');
+const shippingGrid = document.getElementById('shippingGrid');
+const resultArea = document.getElementById('resultArea');
+
+function init() {
+  // Vendor dropdown
+  const vendors = [...new Map(
+    PRODUCTS.filter(p => p.vendorName).map(p => [p.vendorName, p.vendorCode])
+  ).entries()].sort((a,b) => a[1].localeCompare(b[1]));
+  vendors.forEach(([name, code]) => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = `${code}  ${name}`;
+    vendorFilter.appendChild(opt);
+  });
+
+  // Shipping buttons
+  SHIP_OPTIONS.forEach(s => {
+    const cost = SHIPPING_RATES[s.name] || 0;
+    const btn = document.createElement('div');
+    btn.className = 'pick-btn ship-btn';
+    btn.dataset.name = s.name;
+    btn.innerHTML = `<div class="check-mark">✓</div><div class="btn-label">${s.icon} ${s.name}</div><div class="btn-sub">NT$${cost}</div>`;
+    btn.addEventListener('click', () => toggleShipping(btn, s.name, cost));
+    shippingGrid.appendChild(btn);
+  });
+
+  vendorFilter.addEventListener('change', onVendorChange);
+  modelFilter.addEventListener('change', onModelChange);
+  descFilter.addEventListener('change', onDescChange);
+  colorFilter.addEventListener('change', onColorChange);
+
+  updateSteps(0);
+}
+
+// ===== Dropdown handlers =====
+function onVendorChange() {
+  const vendor = vendorFilter.value;
+  resetFrom('model');
+
+  if (!vendor) { updateSteps(0); return; }
+
+  const models = [...new Set(PRODUCTS.filter(p => p.vendorName === vendor).map(p => p.model))].sort();
+  modelFilter.innerHTML = '<option value="">— 請選擇型號 —</option>';
+  models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    modelFilter.appendChild(opt);
+  });
+  modelFilter.disabled = false;
+  updateSteps(1);
+}
+
+function onModelChange() {
+  const vendor = vendorFilter.value;
+  const model = modelFilter.value;
+  resetFrom('desc');
+
+  if (!model) { updateSteps(1); return; }
+
+  const descs = [...new Set(
+    PRODUCTS.filter(p => p.vendorName === vendor && p.model === model).map(p => p.desc)
+  )].sort();
+  descFilter.innerHTML = '<option value="">— 請選擇描述 —</option>';
+  descs.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = d;
+    descFilter.appendChild(opt);
+  });
+  descFilter.disabled = false;
+  updateSteps(2);
+}
+
+function onDescChange() {
+  selectedColor = "";
+  colorFilter.innerHTML = '<option value="">— 請先選擇描述 —</option>';
+  colorFilter.disabled = true;
+  hideResult();
+
+  if (!descFilter.value) { updateSteps(2); return; }
+
+  // 固定顯示五個顏色選項
+  colorFilter.innerHTML = '<option value="">— 請選擇顏色 —</option>';
+  COLOR_OPTIONS.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    colorFilter.appendChild(opt);
+  });
+  colorFilter.disabled = false;
+  updateSteps(3);
+}
+
+function onColorChange() {
+  selectedColor = colorFilter.value;
+  if (selectedColor) {
+    updateSteps(4);
+  } else {
+    updateSteps(3);
+  }
+  hideResult();
+  tryShowResult();
+}
+
+function toggleShipping(btn, name, cost) {
+  if (selectedShipping === name) {
+    selectedShipping = "";
+    selectedShippingCost = 0;
+    btn.classList.remove('selected');
+  } else {
+    document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedShipping = name;
+    selectedShippingCost = cost;
+  }
+  tryShowResult();
+}
+
+// ===== Show single result =====
+function tryShowResult() {
+  const vendor = vendorFilter.value;
+  const model = modelFilter.value;
+  const desc = descFilter.value;
+
+  if (!vendor || !model || !desc || !selectedColor || !selectedShipping) {
+    hideResult();
+    return;
+  }
+
+  const p = PRODUCTS.find(x =>
+    x.vendorName === vendor &&
+    x.model === model &&
+    x.desc === desc &&
+    x.colorCategory === selectedColor
+  );
+
+  if (!p) { hideResult(); return; }
+
+  const isTax = p.priceType === '含稅';
+  const typeClass = isTax ? 'tax' : 'notax';
+  const typeLabel = isTax ? '含稅價格' : '未含稅價格';
+  const sym = p.currency === 'USD' ? '$' : p.currency === 'CNY' ? '¥' : '';
+  const shipIcon = (SHIP_OPTIONS.find(s => s.name === selectedShipping) || {}).icon || '';
+  const totalTWD = p.baseTWD + selectedShippingCost;
+
+  let priceRows = '';
+  if (isTax) {
+    priceRows = `
+      <div class="price-row">
+        <span class="label">含稅單價 (${p.currency})</span>
+        <span class="value">${sym}${num(p.unitPrice)}</span>
+      </div>
+      <div class="price-row">
+        <span class="label">未含稅單價 (${p.currency}) <span class="tag notax">自動換算</span></span>
+        <span class="value">${sym}${num(p.unitPriceAlt)}</span>
+      </div>`;
+  } else {
+    priceRows = `
+      <div class="price-row">
+        <span class="label">未含稅單價 (${p.currency})</span>
+        <span class="value">${sym}${num(p.unitPrice)}</span>
+      </div>`;
+  }
+
+  resultArea.innerHTML = `
+  <div class="result-section">
+    <div class="result-title ${typeClass}">
+      <span class="tag ${typeClass}" style="background:rgba(255,255,255,.2);color:#fff;">${typeLabel}</span>
+      ${p.vendorName} — ${p.model} — ${p.colorCategory}
+    </div>
+    <div class="result-body">
+      <div class="product-info">
+        <div class="model-name">${p.model}</div>
+        <div class="desc">${p.desc}</div>
+      </div>
+      ${priceRows}
+      <div class="price-row">
+        <span class="label">台幣基礎成本</span>
+        <span class="value">NT$${p.baseTWD.toLocaleString('zh-TW')}</span>
+      </div>
+      <div class="price-row shipping">
+        <span class="label">運費（${shipIcon} ${selectedShipping}）</span>
+        <span class="value">NT$${selectedShippingCost.toLocaleString('zh-TW')}</span>
+      </div>
+      <div class="price-row total">
+        <span class="label">台幣總成本</span>
+        <span class="value">$${totalTWD.toLocaleString('zh-TW')}</span>
+      </div>
+      ${p.note ? `<div class="note-badge">📌 ${p.note}</div>` : ''}
+    </div>
+  </div>`;
+  resultArea.classList.add('visible');
+}
+
+function hideResult() {
+  resultArea.classList.remove('visible');
+  resultArea.innerHTML = '';
+}
+
+// ===== Reset helpers =====
+function resetFrom(level) {
+  if (level === 'model') {
+    modelFilter.innerHTML = '<option value="">— 請先選擇供應商 —</option>';
+    modelFilter.disabled = true;
+    descFilter.innerHTML = '<option value="">— 請先選擇型號 —</option>';
+    descFilter.disabled = true;
+  }
+  if (level === 'desc') {
+    descFilter.innerHTML = '<option value="">— 請先選擇型號 —</option>';
+    descFilter.disabled = true;
+  }
+  selectedColor = "";
+  colorFilter.innerHTML = '<option value="">— 請先選擇描述 —</option>';
+  colorFilter.disabled = true;
+  hideResult();
+}
+
+function resetAll() {
+  vendorFilter.value = '';
+  modelFilter.innerHTML = '<option value="">— 請先選擇供應商 —</option>';
+  modelFilter.disabled = true;
+  descFilter.innerHTML = '<option value="">— 請先選擇型號 —</option>';
+  descFilter.disabled = true;
+  colorFilter.innerHTML = '<option value="">— 請先選擇描述 —</option>';
+  colorFilter.disabled = true;
+  selectedColor = '';
+  selectedShipping = '';
+  selectedShippingCost = 0;
+  document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('selected'));
+  updateSteps(0);
+  hideResult();
+}
+
+// ===== Step indicator =====
+function updateSteps(level) {
+  document.getElementById('s1').className = 'step ' + (level >= 1 ? 'done' : 'active');
+  document.getElementById('sl1').className = 'step-line ' + (level >= 1 ? 'done' : '');
+  document.getElementById('s2').className = 'step ' + (level >= 2 ? 'done' : level >= 1 ? 'active' : '');
+  document.getElementById('sl2').className = 'step-line ' + (level >= 2 ? 'done' : '');
+  document.getElementById('s3').className = 'step ' + (level >= 3 ? 'done' : level >= 2 ? 'active' : '');
+  document.getElementById('sl3').className = 'step-line ' + (level >= 3 ? 'done' : '');
+  document.getElementById('s4').className = 'step ' + (level >= 4 ? 'done' : level >= 3 ? 'active' : '');
+}
+
+function num(v) {
+  if (v == null || v === '') return '—';
+  return Number(v).toLocaleString('zh-TW', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+}
+
+init();
+</script>
+</body>
+</html>
